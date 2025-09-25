@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Campaign } from "@/lib/types"
+import { Campaign, Persona, Offer } from "@/lib/types"
+import { PersonaOffersTab } from "./persona-offers-tab"
 import { 
   X, 
   Target, 
@@ -36,6 +37,8 @@ interface EnhancedCampaignPreviewProps {
   isLaunched?: boolean
   isGeneratingPersonas?: boolean
   personasReady?: boolean
+  personas?: Persona[]
+  onSelectOffer?: (persona: Persona, offer: Offer) => void
 }
 
 export function EnhancedCampaignPreview({ 
@@ -49,7 +52,9 @@ export function EnhancedCampaignPreview({
   isLaunching = false, 
   isLaunched = false,
   isGeneratingPersonas = false,
-  personasReady = false
+  personasReady = false,
+  personas = [],
+  onSelectOffer
 }: EnhancedCampaignPreviewProps) {
   if (!campaign) return null
 
@@ -138,11 +143,12 @@ export function EnhancedCampaignPreview({
 
           {/* Detailed Information Tabs */}
           <Tabs defaultValue="content" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="content">Content</TabsTrigger>
               <TabsTrigger value="metrics">Metrics</TabsTrigger>
               <TabsTrigger value="strategy">Strategy</TabsTrigger>
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              <TabsTrigger value="personas">Persona Offers</TabsTrigger>
             </TabsList>
 
             <TabsContent value="content" className="space-y-4">
@@ -160,16 +166,22 @@ export function EnhancedCampaignPreview({
             <TabsContent value="timeline" className="space-y-4">
               <TimelineTab campaign={campaign} />
             </TabsContent>
+
+            <TabsContent value="personas" className="space-y-4">
+              <PersonaOffersTab 
+                campaign={campaign} 
+                personas={personas} 
+                onSelectOffer={onSelectOffer}
+                isGeneratingPersonas={isGeneratingPersonas}
+                personasReady={personasReady}
+              />
+            </TabsContent>
           </Tabs>
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3 pt-4 border-t">
             {isLaunched ? (
               <>
-                <Button onClick={() => onSelectCampaign(campaign)} className="flex-1 gap-2">
-                  <Eye className="h-4 w-4" />
-                  View Persona Offers
-                </Button>
                 <Button variant="outline" onClick={() => onCustomizeCampaign(campaign)} className="flex-1 gap-2">
                   <Edit className="h-4 w-4" />
                   Edit Campaign
@@ -181,14 +193,6 @@ export function EnhancedCampaignPreview({
               </>
             ) : (
               <>
-                <Button 
-                  onClick={() => onSelectCampaign(campaign)} 
-                  className="flex-1 gap-2"
-                  disabled={isGeneratingPersonas}
-                >
-                  <Eye className="h-4 w-4" />
-                  {isGeneratingPersonas ? "Loading Offers..." : "View Persona Offers"}
-                </Button>
                 <Button variant="outline" onClick={() => onCustomizeCampaign(campaign)} className="flex-1 gap-2">
                   <Edit className="h-4 w-4" />
                   Customize

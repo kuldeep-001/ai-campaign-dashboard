@@ -381,6 +381,8 @@ export function ChatInterface() {
         isLaunched={isLaunched}
         isGeneratingPersonas={isGeneratingPersonas}
         personasReady={personasReady}
+        personas={personas}
+        onSelectOffer={handleSelectOffer}
       />
 
       {/* Campaign Customization Dialog */}

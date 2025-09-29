@@ -3,7 +3,7 @@ import { Campaign, Persona, Offer, GeminiResponse, CampaignFilters } from './typ
 
 export class GeminiService {
   private getApiKey(): string {
-    const apiKey = "AIzaSyChIFlkGJl2-JK0C1DjJTawnb4VG6xiHMQ"
+    const apiKey = "AIzaSyDGqqNDwdObQzSnm50v59vpOQ5GKmfsg_g"
     console.log('Gemini API Key loaded:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT FOUND')
     return apiKey
   }
@@ -14,7 +14,7 @@ export class GeminiService {
       throw new Error('Gemini API key not configured')
     }
     const genAI = new GoogleGenerativeAI(apiKey)
-    return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    return genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
   }
 
   async generateCampaigns(query: string, filters?: CampaignFilters): Promise<GeminiResponse> {
@@ -196,21 +196,20 @@ Goal: help the user plan, preview, customize, and launch seasonal/festival marke
 
 Timezone: Asia/Kolkata (IST). Today: ${new Date().toISOString().split('T')[0]}.
 
+IMPORTANT: You must respond with ONLY a JSON object. Do NOT generate any code, tables, or other text. Only return the JSON response.
+
 ========================
 USER INTENTS YOU SUPPORT
 ========================
 1) SuggestCampaigns
    The user asks for ideas within a date window/count/focus (e.g., "4 campaigns between Oct 2025–Jan 2026 for Indian festivals").
-   • Filter seeded campaigns that overlap the window and focus.
-   • If fewer than requested, synthesize extras aligned to Indian seasons/festivals (source="generated").
-   • Return (A) a concise human table and (B) a machine JSON payload.
+   • Generate campaigns aligned to Indian seasons/festivals.
+   • Return ONLY the JSON response below.
 
 2) CampaignDetails
    The user selects/asks about one campaign (by id/title).
-   • Produce a brief (goal, audience, channels, key dates) and a 5-persona × 12-offers matrix (total 60 offers).
-   • Use seeded offers first (convert dates dd/MM/yyyy → ISO). If needed, synthesize the rest (source="generated").
-   • Keep offer availability within the campaign's suggested run where possible.
-   • Return (A) human brief + matrix and (B) machine JSON.
+   • Produce campaign details and persona offers.
+   • Return ONLY the JSON response below.
 
 3) CustomizeCampaign (optional free-text edits)
    The user requests changes (dates, channels, audience, copy ideas).
@@ -219,17 +218,13 @@ USER INTENTS YOU SUPPORT
 
 4) LaunchCampaign (user says "launch"/"go live")
    • Recommend final run dates and checklist.
-   • Return JSON with "status":"ready_to_launch"; the app will actually mark status="active" after API success.
+   • Return JSON with "status":"ready_to_launch".
 
 ========================
 OUTPUT CONTRACTS (STRICT)
 ========================
 
-A) SuggestCampaigns
-Human (table with EXACT columns):
-| ID | Campaign Name | Suggested Run (dd MMM yyyy – dd MMM yyyy) | Primary Festivals/Season | Target Audience | Confidence | Source |
-
-Machine (single fenced JSON):
+For SuggestCampaigns, return ONLY this JSON format:
 {
   "intent": "SuggestCampaigns",
   "campaigns": [
@@ -240,28 +235,16 @@ Machine (single fenced JSON):
       "primaryFestivalsOrSeason": ["string"],
       "targetAudience": "string",
       "confidence": number,
-      "source": "dummy"|"generated",
+      "source": "generated",
       "rationale": "≤200 chars",
-      "channels": string[],
-      "contentIdeas": string[]
+      "channels": ["Email", "SMS", "Social", "Display"],
+      "contentIdeas": ["string", "string", "string"]
     }
   ],
   "notes": "cultural/privacy alignment notes if any"
 }
 
-B) CampaignDetails
-Human:
-- Brief (bullets): goal, audience, channels, key dates (preheat/main/remarketing)
-- Offers Matrix table: columns = Persona 1..5, rows = 5 offers.
-  Each cell lines:
-  • Offer Title
-  • Product/Category
-  • Value
-  • Channel
-  • Personalization Note
-  • Availability (dd MMM yyyy – dd MMM yyyy)
-
-Machine (single fenced JSON):
+For CampaignDetails, return ONLY this JSON format:
 {
   "intent": "CampaignDetails",
   "campaign": {
@@ -281,11 +264,11 @@ Machine (single fenced JSON):
     {"id":"p5","name":"Regional/Cultural Shoppers","traits":["festival-led","regional tastes"]}
   ],
   "offersByPersona": {
-    "p1": [ PersonaOfferView x5 ],
-    "p2": [ x5 ],
-    "p3": [ x5 ],
-    "p4": [ x5 ],
-    "p5": [ x5 ]
+    "p1": [{"title":"string","product":"string","value":"string","channel":"string","personalization":"string","availability":{"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}}],
+    "p2": [{"title":"string","product":"string","value":"string","channel":"string","personalization":"string","availability":{"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}}],
+    "p3": [{"title":"string","product":"string","value":"string","channel":"string","personalization":"string","availability":{"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}}],
+    "p4": [{"title":"string","product":"string","value":"string","channel":"string","personalization":"string","availability":{"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}}],
+    "p5": [{"title":"string","product":"string","value":"string","channel":"string","personalization":"string","availability":{"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}}]
   },
   "preview": {
     "hero": { "headline": "string", "sub": "string", "cta": "string" },
@@ -299,15 +282,16 @@ GUARDRAILS & STYLE
 ========================
 - India-first cultural alignment; avoid stereotypes.
 - No PII; lawful segmenting only.
-- Deterministic columns/keys; exactly ONE fenced JSON block per reply.
-- Be concise for human text; keep rationales ≤200 chars.
-- If the user asks to launch, return JSON with "status":"ready_to_launch" and recommended run; the app will set status="active" after APIs succeed.
+- Return ONLY JSON - no code, no tables, no explanations.
+- Be concise; keep rationales ≤200 chars.
+- Use realistic dates in YYYY-MM-DD format.
+- Generate 3-5 campaigns for SuggestCampaigns.
 
 User Message: "${message}"
 
 Context: ${context ? JSON.stringify(context) : 'None'}
 
-Respond as the Campaign Planner AI following the exact specifications above.`
+Respond with ONLY the JSON object - no other text.`
   }
 
   private parseCampaignResponse(text: string, query: string): GeminiResponse {
@@ -375,7 +359,69 @@ Respond as the Campaign Planner AI following the exact specifications above.`
 
   private parseChatResponse(text: string, message: string): GeminiResponse {
     try {
-      // Look for JSON blocks in the response
+      console.log('Parsing chat response:', text.substring(0, 200) + '...')
+      
+      // Check if response contains markdown code blocks with JSON
+      if (text.includes('```json')) {
+        console.log('Response contains markdown JSON code block, extracting JSON')
+        
+        // Extract JSON from markdown code block
+        const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/)
+        if (jsonMatch && jsonMatch[1]) {
+          const jsonStr = jsonMatch[1].trim()
+          console.log('Extracted JSON string:', jsonStr.substring(0, 100) + '...')
+          
+          try {
+            const parsed = JSON.parse(jsonStr)
+            console.log('Successfully parsed JSON:', parsed.intent)
+            
+            if (parsed.intent === 'SuggestCampaigns') {
+              return {
+                message: `I've found ${parsed.campaigns.length} campaign suggestions for you. Click on any campaign to view details and launch it.`,
+                type: 'campaign',
+                data: parsed.campaigns
+              }
+            } else if (parsed.intent === 'CampaignDetails') {
+              return {
+                message: `Here are the detailed campaign specifications and persona offers.`,
+                type: 'campaign',
+                data: parsed
+              }
+            } else if (parsed.intent === 'LaunchCampaign') {
+              return {
+                message: text,
+                type: 'text',
+                data: parsed
+              }
+            }
+          } catch (parseError) {
+            console.error('Error parsing extracted JSON:', parseError)
+          }
+        }
+      }
+      
+      // Check if response contains Python code (fallback)
+      if (text.includes('```') || text.includes('from datetime') || text.includes('import json')) {
+        console.log('Response contains Python code, attempting to extract JSON from code output')
+        
+        // Try to extract JSON from code output
+        const jsonMatch = text.match(/json\.dumps\([\s\S]*?\}\)/)
+        if (jsonMatch) {
+          // Extract the JSON object from json.dumps()
+          const jsonStr = jsonMatch[0].replace('json.dumps(', '').replace(/\)$/, '')
+          const parsed = JSON.parse(jsonStr)
+          
+          if (parsed.intent === 'SuggestCampaigns') {
+            return {
+              message: `I've found ${parsed.campaigns.length} campaign suggestions for you. Click on any campaign to view details and launch it.`,
+              type: 'campaign',
+              data: parsed.campaigns
+            }
+          }
+        }
+      }
+      
+      // Look for raw JSON blocks in the response (fallback)
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
@@ -412,7 +458,7 @@ Respond as the Campaign Planner AI following the exact specifications above.`
     }
 
     return {
-      message: text,
+      message: 'I apologize, but I encountered an issue generating campaigns. Please try asking again with a simpler request like "Give me Diwali campaign ideas".',
       type: 'text'
     }
   }
